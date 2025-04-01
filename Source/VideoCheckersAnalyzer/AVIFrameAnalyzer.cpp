@@ -48,7 +48,7 @@ void AAVIFrameAnalyzer::Tick(float DeltaTime)
 
     uint8 TickDeltaTime = NowMS - LastTickTime;
 
-    UE_LOG(LogTemp, Log, TEXT("TickDeltaTime: %03d\n"), TickDeltaTime);
+    //UE_LOG(LogTemp, Log, TEXT("TickDeltaTime: %03d\n"), TickDeltaTime);
     LastTickTime = NowMS;
 }
 
@@ -106,7 +106,7 @@ void AAVIFrameAnalyzer::Screenshot()
 
     uint8 CaptureTime = EndMS - StartMS;
 
-    UE_LOG(LogTemp, Log, TEXT("CaptureTime: %03d\n"), CaptureTime);
+    //UE_LOG(LogTemp, Log, TEXT("CaptureTime: %03d\n"), CaptureTime);
 }
 
 //void AAVIFrameAnalyzer::CaptureScene()
@@ -297,8 +297,9 @@ void AAVIFrameAnalyzer::DecodeTexture(UTexture2D* CapturedTexture)
             return true;
         };
     
+    FString DetalizedValue = "Detalized value ";
 
-    auto DecodeBits = [&](int StartY, int BitCount) -> uint32
+    auto DecodeBits = [&](int StartY, int BitCount, FString &DetalizedValue) -> uint32
         {
             //FString DetalizedValue = "Detalized value ";
             uint32 Value = 0;
@@ -314,18 +315,18 @@ void AAVIFrameAnalyzer::DecodeTexture(UTexture2D* CapturedTexture)
 
                 FColor Color = *((FColor*)&PixelData[PixelIndex * sizeof(FColor)]);
 
-                if (Color.R > 128)
+                if (Color.G > 128)
                 {
                     Value |= (1 << i);
-                    //DetalizedValue += "1";
+                    DetalizedValue += "1";
                 }
-                /*else
+                else
                 {
                     DetalizedValue += "0";
-                }*/
+                }
 
             }
-            //DetalizedValue += "\n";
+            DetalizedValue += "\n";
 
             //FFileHelper::SaveStringToFile(DetalizedValue, *FilePath, FFileHelper::EEncodingOptions::AutoDetect, &IFileManager::Get(), FILEWRITE_Append);
 
@@ -333,21 +334,19 @@ void AAVIFrameAnalyzer::DecodeTexture(UTexture2D* CapturedTexture)
         };
 
     // Декодируем номер кадра (12 бит, младший бит слева)
-    uint32 FrameNumber = DecodeBits(0, 12);
-
-    
+    uint32 FrameNumber = DecodeBits(0, 12, DetalizedValue);
 
     RawImageData->Unlock();
-
-    // Вывод номера кадра
-    UE_LOG(LogTemp, Log, TEXT("FrameNumber: %d"), FrameNumber);
 
     // Запись в файл
     //SaveDataToFile(FrameNumber);
     if (FrameNumber - PrevFrameNumber != 1) {
+        
         FDateTime Now = FDateTime::Now();
         FString TimeString = Now.ToString(TEXT("%H:%M:%S")); // Формат: часы:минуты:секунды
         FString Line = FString::Printf(TEXT("%d %d %s\n"), FrameNumber, PrevFrameNumber, *TimeString);
+        UE_LOG(LogTemp, Log, TEXT("Dropped frame: %s"), *Line);
+        UE_LOG(LogTemp, Log, TEXT("%s"), *DetalizedValue);
         FFileHelper::SaveStringToFile(Line, *FilePath, FFileHelper::EEncodingOptions::AutoDetect, &IFileManager::Get(), FILEWRITE_Append);
     }
 
